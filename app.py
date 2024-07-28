@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, request
 import json
-from transformers import pipeline
+from gradio_client import Client
 import os
 
 app = Flask(__name__)
@@ -8,13 +8,8 @@ app = Flask(__name__)
 # Acessar o token da variável de ambiente
 hf_api_token = os.getenv('HF_API_TOKEN')
 
-# Inicialize o pipeline de resumo com o modelo ChatGPT mini
-summarizer = pipeline(
-    "text-generation",  # Tipo de tarefa pode ser "text-generation"
-    model="Skyjoe/OpenCHAT-mini",  # Substitua pelo identificador correto do seu modelo
-    tokenizer="Skyjoe/OpenCHAT-mini",  # O mesmo modelo geralmente é usado como tokenizer
-    api_key=hf_api_token
-)
+# Inicialize o cliente do Gradio
+client = Client("Skyjoe/OpenCHAT-mini", api_key=hf_api_token)
 
 @app.route('/api/news', methods=['GET'])
 def get_news():
@@ -31,12 +26,17 @@ def summarize_news():
 
     text = json_data['text']
     
-    # Usar o summarizer para gerar o resumo
-    summary = summarizer(text, max_length=150, min_length=50, do_sample=False)
-    summarized_text = summary[0]['generated_text'] if 'generated_text' in summary[0] else summary[0]['summary_text']
+    # Usar o cliente do Gradio para gerar o resumo
+    result = client.predict(
+        message={"text": text, "files": []},
+        api_name="/chat"
+    )
+    
+    summarized_text = result['text']
     
     return jsonify({'summary': summarized_text})
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
